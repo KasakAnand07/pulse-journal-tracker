@@ -8,14 +8,15 @@ const STORAGE_KEYS = {
   expenseItems: "pulse-expenses",
   profile: "pulse-profile",
   categories: "pulse-categories",
+  calmDeadlines: "pulse-calm-deadlines",
 };
 
 const pages = [
-  { id: "dashboard", label: "Dashboard" },
-  { id: "todo", label: "To-Do List" },
-  { id: "tracker", label: "Tracker" },
-  { id: "expenses", label: "Expenses" },
-  { id: "diary", label: "Diary" },
+  { id: "dashboard", label: "Dashboard", shortLabel: "Home" },
+  { id: "todo", label: "To-Do List", shortLabel: "Tasks" },
+  { id: "tracker", label: "Tracker", shortLabel: "Track" },
+  { id: "expenses", label: "Expenses", shortLabel: "Wallet" },
+  { id: "diary", label: "Diary", shortLabel: "Diary" },
 ];
 
 const priorities = [
@@ -101,8 +102,43 @@ function getDeadlineTone(deadline) {
   return "cool";
 }
 
+function getCalmDeadlineTone(deadline) {
+  if (!deadline) return "calm";
+  const diff = new Date(deadline).getTime() - Date.now();
+  if (diff <= 0) return "soft-late";
+  if (diff <= 24 * 60 * 60 * 1000) return "soft-soon";
+  return "calm";
+}
+
+function getCalmDeadlineStatus(deadline) {
+  if (!deadline) return "Flexible timing";
+  const diff = new Date(deadline).getTime() - Date.now();
+  if (diff <= 0) return "Past its target";
+  if (diff <= 24 * 60 * 60 * 1000) return "Due today";
+  if (diff <= 48 * 60 * 60 * 1000) return "Due tomorrow";
+  if (diff <= 7 * 24 * 60 * 60 * 1000) return "Coming up this week";
+  return "Planned ahead";
+}
+
 function EmptyState({ message }) {
   return <div className="empty-state">{message}</div>;
+}
+
+function NavIcon({ pageId }) {
+  const common = { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true };
+
+  switch (pageId) {
+    case "dashboard":
+      return <svg {...common}><path d="M4 11.5 12 5l8 6.5" /><path d="M6.5 10.5V20h11V10.5" /></svg>;
+    case "todo":
+      return <svg {...common}><path d="M8 7h12" /><path d="M8 12h12" /><path d="M8 17h12" /><path d="m4 7 1.2 1.2L7 6.5" /><path d="m4 12 1.2 1.2L7 11.5" /><path d="m4 17 1.2 1.2L7 16.5" /></svg>;
+    case "tracker":
+      return <svg {...common}><path d="M5 19V9" /><path d="M12 19V5" /><path d="M19 19v-7" /></svg>;
+    case "expenses":
+      return <svg {...common}><path d="M4 7.5h16v9H4z" /><path d="M16 12h.01" /><path d="M7 16c.8-1.5.8-4.5 0-6" /><path d="M17 16c-.8-1.5-.8-4.5 0-6" /></svg>;
+    default:
+      return <svg {...common}><path d="M7 4.5h7l3 3V19.5H7z" /><path d="M14 4.5v3h3" /><path d="M9.5 12h5" /><path d="M9.5 15h5" /></svg>;
+  }
 }
 
 function App() {
@@ -119,6 +155,7 @@ function App() {
     }),
   );
   const [categories, setCategories] = useState(() => (initialCategories.length ? initialCategories : ["General"]));
+  const [calmDeadlines, setCalmDeadlines] = useState(() => readStorage(STORAGE_KEYS.calmDeadlines, false));
   const [categoryDraft, setCategoryDraft] = useState("");
   const [taskForm, setTaskForm] = useState({
     title: "",
@@ -149,6 +186,7 @@ function App() {
   useEffect(() => localStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(profile)), [profile]);
   useEffect(() => localStorage.setItem(STORAGE_KEYS.diaryEntries, JSON.stringify(entries)), [entries]);
   useEffect(() => localStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(categories)), [categories]);
+  useEffect(() => localStorage.setItem(STORAGE_KEYS.calmDeadlines, JSON.stringify(calmDeadlines)), [calmDeadlines]);
 
   useEffect(() => {
     if (diaryPassword) localStorage.setItem(STORAGE_KEYS.diaryPassword, diaryPassword);
@@ -361,15 +399,25 @@ function App() {
           <p className="eyebrow">Welcome back, {profile.name || "Scholar"}</p>
           <h1 className="topbar-title">{profile.studyGoal || "Pulse Journal Tracker"}</h1>
         </div>
-        <button className="theme-toggle" onClick={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}>
-          {theme === "dark" ? "Light Mode" : "Dark Mode"}
-        </button>
+        <div className="topbar-actions">
+          <button
+            className={calmDeadlines ? "header-toggle active" : "header-toggle"}
+            onClick={() => setCalmDeadlines((current) => !current)}
+          >
+            {calmDeadlines ? "Calm Deadlines On" : "Calm Deadlines"}
+          </button>
+          <button className="theme-toggle" onClick={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}>
+            {theme === "dark" ? "Light Mode" : "Dark Mode"}
+          </button>
+        </div>
       </header>
 
-      <nav className="nav-panel">
+      <nav className="nav-panel" aria-label="Primary navigation">
         {pages.map((page) => (
           <button key={page.id} className={activePage === page.id ? "nav-btn active" : "nav-btn"} onClick={() => setActivePage(page.id)}>
-            {page.label}
+            <span className="nav-btn-icon"><NavIcon pageId={page.id} /></span>
+            <span className="nav-btn-label nav-btn-label-desktop">{page.label}</span>
+            <span className="nav-btn-label nav-btn-label-mobile">{page.shortLabel}</span>
           </button>
         ))}
       </nav>
@@ -553,7 +601,7 @@ function App() {
             <div className="tracker-grid">
               {filteredTasks.length === 0 ? <EmptyState message="No tracker cards match your current filters." /> : null}
               {filteredTasks.map((task) => (
-                <article key={`${task.id}-${clockTick}`} className={`tracker-card ${task.completed ? "done" : ""} tone-${getDeadlineTone(task.deadline)}`}>
+                <article key={`${task.id}-${clockTick}`} className={`tracker-card ${task.completed ? "done" : ""} tone-${calmDeadlines ? getCalmDeadlineTone(task.deadline) : getDeadlineTone(task.deadline)}`}>
                   <div className="tracker-head">
                     <div><span className="subject-chip">{task.subject}</span><h3>{task.title}</h3></div>
                     <label className="checkbox-wrap"><input type="checkbox" checked={task.completed} onChange={() => toggleTask(task.id)} /><span>{task.completed ? "Done" : "Mark done"}</span></label>
@@ -561,7 +609,7 @@ function App() {
                   <p>{task.details || "No details added yet. Edit the task to add study notes."}</p>
                   <div className="tracker-meta">
                     <div><span>Deadline</span><strong>{formatDate(task.deadline)}</strong></div>
-                    <div><span>Status</span><strong>{timeLeft(task.deadline) || "Flexible timing"}</strong></div>
+                    <div><span>Status</span><strong>{calmDeadlines ? getCalmDeadlineStatus(task.deadline) : (timeLeft(task.deadline) || "Flexible timing")}</strong></div>
                     <div><span>Priority</span><strong className="capitalize">{task.priority}</strong></div>
                   </div>
                   <div className="tracker-footer row-actions">
