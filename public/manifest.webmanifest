@@ -1,0 +1,17 @@
+{
+  "name": "Pulse Journal Tracker",
+  "short_name": "Pulse Tracker",
+  "description": "A personal dashboard for study tracking, expenses, and private diary writing.",
+  "theme_color": "#08111f",
+  "background_color": "#08111f",
+  "display": "standalone",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
