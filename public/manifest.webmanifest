@@ -5,13 +5,15 @@
   "theme_color": "#08111f",
   "background_color": "#08111f",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "start_url": "/",
+  "scope": "/",
   "icons": [
     {
       "src": "/logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ]
 }
